@@ -69,6 +69,16 @@ void bacaGPS() {
 
 // Kirim pesan ke Telegram
 void sendMessage(String message) {
+  // Set APN (ganti "internet" sesuai operator jika perlu)
+  sim800.println("AT+SAPBR=3,1,\"Contype\",\"GPRS\"");
+  delay(200);
+  sim800.println("AT+SAPBR=3,1,\"APN\",\"internet\""); // <-- Ganti APN jika perlu
+  delay(200);
+  sim800.println("AT+SAPBR=1,1"); // Buka koneksi GPRS
+  delay(2000);
+  sim800.println("AT+SAPBR=2,1"); // Cek status koneksi
+  delay(500);
+
   sim800.println("AT+HTTPTERM");
   delay(100);
   sim800.println("AT+HTTPINIT");
@@ -81,6 +91,11 @@ void sendMessage(String message) {
   delay(500);
   sim800.println("AT+HTTPACTION=0");
   delay(5000);
+
+  sim800.println("AT+HTTPTERM");
+  delay(100);
+  sim800.println("AT+SAPBR=0,1"); // Tutup koneksi GPRS
+  delay(500);
 }
 
 // Deteksi gerakan sebagai ancaman
