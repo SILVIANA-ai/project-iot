@@ -143,6 +143,5 @@ void loop() {
     kirimLokasi();
     threatDetected = false;
   }
-
   delay(5000); // Monitoring setiap 5 detik
 }
