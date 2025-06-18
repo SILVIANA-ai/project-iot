@@ -12,7 +12,7 @@ Adafruit_MPU6050 mpu;
 
 #define SIM800_RX 18 // RX ESP32 ke TX SIM800
 #define SIM800_TX 19 // TX ESP32 ke RX SIM800
-#define GPS_RX 17      // RX ESP32 ke TX GPS
+#define GPS_RX 17    // RX ESP32 ke TX GPS
 #define GPS_TX 16    // TX ESP32 ke RX GPS
 
 String chat_id = "1351783862"; 
@@ -33,9 +33,9 @@ void setup() {
     while (1);
   }
 
-  // Tunggu SIM800 merespons AT
+  // --- Cek koneksi dasar SIM800 ---
   bool simReady = false;
-  Serial.println("Mengecek koneksi SIM800...");
+  Serial.println("🔍 Mengecek koneksi SIM800...");
   for (int i = 0; i < 5; i++) {
     sim800.println("AT");
     delay(500);
@@ -48,16 +48,47 @@ void setup() {
         break;
       }
     }
-
     if (simReady) break;
   }
 
-  if (simReady) {
-    delay(2000); // Pastikan SIM800 siap penuh
-    sendMessage("🚨 Sistem Smart Necklace Sheep aktif.");
-  } else {
+  if (!simReady) {
     Serial.println("❌ SIM800 tidak merespon. Cek koneksi dan power.");
+    return;
   }
+
+  delay(1000);
+  Serial.println("✅ SIM800 aktif.");
+
+  // --- Cek status SIM Card ---
+  sim800.println("AT+CPIN?");
+  delay(500);
+  while (sim800.available()) {
+    Serial.println("Status SIM: " + sim800.readStringUntil('\n'));
+  }
+
+  // --- Cek sinyal ---
+  sim800.println("AT+CSQ");
+  delay(500);
+  while (sim800.available()) {
+    Serial.println("Sinyal: " + sim800.readStringUntil('\n'));
+  }
+
+  // --- Cek jaringan terdaftar ---
+  sim800.println("AT+CREG?");
+  delay(500);
+  while (sim800.available()) {
+    Serial.println("Registrasi jaringan: " + sim800.readStringUntil('\n'));
+  }
+
+  // --- Cek operator ---
+  sim800.println("AT+COPS?");
+  delay(1000);
+  while (sim800.available()) {
+    Serial.println("Operator: " + sim800.readStringUntil('\n'));
+  }
+
+  delay(2000);
+  sendMessage("🚨 Sistem Smart Necklace Sheep aktif.");
 }
 
 // Fungsi membaca GPS
@@ -69,6 +100,15 @@ void bacaGPS() {
 
 // Kirim pesan ke Telegram
 void sendMessage(String message) {
+  sim800.println("AT+SAPBR=3,1,\"Contype\",\"GPRS\"");
+  delay(200);
+  sim800.println("AT+SAPBR=3,1,\"APN\",\"iot.telkomsel.com\"");
+  delay(200);
+  sim800.println("AT+SAPBR=1,1");
+  delay(2000);
+  sim800.println("AT+SAPBR=2,1");
+  delay(500);
+
   sim800.println("AT+HTTPTERM");
   delay(100);
   sim800.println("AT+HTTPINIT");
@@ -81,6 +121,11 @@ void sendMessage(String message) {
   delay(500);
   sim800.println("AT+HTTPACTION=0");
   delay(5000);
+
+  sim800.println("AT+HTTPTERM");
+  delay(100);
+  sim800.println("AT+SAPBR=0,1");
+  delay(500);
 }
 
 // Deteksi gerakan sebagai ancaman
@@ -111,7 +156,7 @@ void kirimLokasi() {
 void cekPermintaanUser() {
   while (sim800.available()) {
     String response = sim800.readString();
-    response.toLowerCase(); // Supaya tidak case sensitive
+    response.toLowerCase();
     if (response.indexOf("lokasi") >= 0) {
       kirimLokasi();
     }
@@ -128,6 +173,5 @@ void loop() {
     kirimLokasi();
     threatDetected = false;
   }
-
-  delay(5000); // Monitoring setiap 5 detik
+  delay(5000);
 }
