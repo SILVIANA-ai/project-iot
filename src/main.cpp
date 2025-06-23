@@ -2,7 +2,7 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
-#include <WiFi.h>
+#include <WiFiManager.h>
 #include <HTTPClient.h>
 
 // The TinyGPS++ object
@@ -17,15 +17,35 @@ Adafruit_MPU6050 mpu;
 
 #define GPS_BAUD 9600
 
+// WiFiManager setup
+WiFiManager wm;
+
 String chat_id = "1351783862"; 
 String bot_token = "7857716095:AAEphwz658BW-1ekgPh6ybc_ftnWB0jK2Lc";
 
 bool threatDetected = false;
 
+
 void sendMessage(String message);
 
 void setup() {
   Serial.begin(115200);
+  
+
+    bool res;
+    // res = wm.autoConnect(); // auto generated AP name from chipid
+    // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
+    res = wm.autoConnect("SmartSheepIoT","kambing"); // password protected ap
+
+    if(!res) {
+        Serial.println("Failed to connect");
+        // ESP.restart();
+    } 
+    else {
+        //if you get here you have connected to the WiFi    
+        Serial.println("connected...");
+    }
+
   gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
   Wire.begin();
 
