@@ -1,20 +1,9 @@
-/*********
-  Rui Santos & Sara Santos - Random Nerd Tutorials
-  Complete instructions at https://RandomNerdTutorials.com/esp32-neo-6m-gps-module-arduino/
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files.
-  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*********/
-
 #include <TinyGPS++.h>
-#include <Wire.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
-
-// Define the RX and TX pins for Serial 2
-#define RXD2 16
-#define TXD2 17
-
-#define GPS_BAUD 9600
+#include <Wire.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 
 // The TinyGPS++ object
 TinyGPSPlus gps;
@@ -23,62 +12,111 @@ TinyGPSPlus gps;
 HardwareSerial gpsSerial(2);
 Adafruit_MPU6050 mpu;
 
-void setup() {
-  // Serial Monitor
-  Serial.begin(115200);
-  
-  // Start Serial 2 with the defined RX and TX pins and a baud rate of 9600
-  gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
-  Serial.println("Serial 2 started at 9600 baud rate");
+#define GPS_RX 16 // RX ESP32 ke TX GPS
+#define GPS_TX 17 // TX ESP32 ke RX GPS
 
+#define GPS_BAUD 9600
+
+String chat_id = "1351783862"; 
+String bot_token = "7857716095:AAEphwz658BW-1ekgPh6ybc_ftnWB0jK2Lc";
+
+bool threatDetected = false;
+
+void sendMessage(String message);
+
+void setup() {
+  Serial.begin(115200);
+  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
   Wire.begin();
+
   if (!mpu.begin()) {
-    Serial.println("MPU6050 connection failed");
-    while (1) {
-      delay(10);
+    Serial.println("MPU6050 tidak ditemukan!");
+    while (1);
+  }
+}
+
+// Fungsi membaca GPS
+void bacaGPS() {
+  while (gpsSerial.available() > 0) {
+    gps.encode(gpsSerial.read());
+  }
+}
+
+// Kirim pesan ke Telegram
+void sendMessage(String message) {
+  if ((WiFi.status() == WL_CONNECTED)) {
+    HTTPClient http;
+    String url = "https://api.telegram.org/bot" + bot_token + "/sendMessage?chat_id=" + chat_id + "&text=" + message;
+    http.begin(url);
+    int httpCode = http.GET();
+    if (httpCode > 0) {
+      Serial.printf("Telegram Response code: %d\n", httpCode);
+      String payload = http.getString();
+      Serial.println(payload);
+    } else {
+      Serial.printf("Telegram HTTP request failed, error: %s\n", http.errorToString(httpCode).c_str());
     }
+    http.end();
   } else {
-    Serial.println("MPU6050 connection successful");
+    Serial.println("WiFi not connected. Cannot send Telegram message.");
+  }
+}
+
+// Deteksi gerakan sebagai ancaman
+void deteksiGerakan() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  if (abs(a.acceleration.x) > 8 || abs(a.acceleration.y) > 8 || abs(a.acceleration.z) > 15) {
+    threatDetected = true;
+  } else {
+    threatDetected = false;
+  }
+}
+
+// Kirim lokasi ke user
+void kirimLokasi() {
+  if (gps.location.isValid()) {
+    String latitude = String(gps.location.lat(), 6);
+    String longitude = String(gps.location.lng(), 6);
+    String message = "📍 Lokasi Ternak:\https://www.google.com/maps?q=" + latitude + "," + longitude;
+    sendMessage(message);
+  } else {
+    sendMessage("⚠️ Gagal mendapatkan lokasi GPS.");
+  }
+}
+
+// Cek apakah user meminta lokasi ternak via Telegram
+void cekPermintaanUser() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = "https://api.telegram.org/bot" + bot_token + "/getUpdates?limit=1&offset=-1";
+    http.begin(url);
+    int httpCode = http.GET();
+    if (httpCode > 0) {
+      String payload = http.getString();
+      payload.toLowerCase();
+      if (payload.indexOf("lokasi") >= 0) {
+        kirimLokasi();
+      }
+    } else {
+      Serial.printf("Telegram getUpdates failed, error: %s\n", http.errorToString(httpCode).c_str());
+    }
+    http.end();
+  } else {
+    Serial.println("WiFi not connected. Cannot check Telegram updates.");
   }
 }
 
 void loop() {
-  // This sketch displays information every time a new sentence is correctly encoded.
-  unsigned long start = millis();
+  bacaGPS();
+  deteksiGerakan();
+  cekPermintaanUser();
 
-  while (millis() - start < 1000) {
-    while (gpsSerial.available() > 0) {
-      gps.encode(gpsSerial.read());
-    }
-    if (gps.location.isUpdated()) {
-      Serial.print("LAT: ");
-      Serial.println(gps.location.lat(), 6);
-      Serial.print("LONG: "); 
-      Serial.println(gps.location.lng(), 6);
-      Serial.print("SPEED (km/h) = "); 
-      Serial.println(gps.speed.kmph()); 
-      Serial.print("ALT (min)= "); 
-      Serial.println(gps.altitude.meters());
-      Serial.print("HDOP = "); 
-      Serial.println(gps.hdop.value() / 100.0); 
-      Serial.print("Satellites = "); 
-      Serial.println(gps.satellites.value()); 
-      Serial.print("Time in UTC: ");
-      Serial.println(String(gps.date.year()) + "/" + String(gps.date.month()) + "/" + String(gps.date.day()) + "," + String(gps.time.hour()) + ":" + String(gps.time.minute()) + ":" + String(gps.time.second()));
-      
-      // MPU6050 readings using Adafruit library
-      sensors_event_t a, g, temp;
-      mpu.getEvent(&a, &g, &temp);
-
-      Serial.println("MPU6050 Data:");
-      Serial.print("Accel X: "); Serial.print(a.acceleration.x);
-      Serial.print(" | Accel Y: "); Serial.print(a.acceleration.y);
-      Serial.print(" | Accel Z: "); Serial.println(a.acceleration.z);
-      Serial.print("Gyro X: "); Serial.print(g.gyro.x);
-      Serial.print(" | Gyro Y: "); Serial.print(g.gyro.y);
-      Serial.print(" | Gyro Z: "); Serial.println(g.gyro.z);
-      Serial.print("Temperature: "); Serial.print(temp.temperature); Serial.println(" degC");
-      Serial.println("");
-    }
+  if (threatDetected) {
+    sendMessage("⚠️ Deteksi ancaman gerakan tidak biasa pada ternak!");
+    kirimLokasi();
+    threatDetected = false;
   }
+  delay(5000); // Monitoring setiap 5 detik
 }
