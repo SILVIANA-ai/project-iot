@@ -27,8 +27,8 @@ WiFiManager wm; // global wm instance
 WiFiManagerParameter custom_field; // global param ( for non blocking w params )
 
 
-String chat_id = "1351783862"; 
-String bot_token = "7857716095:AAEphwz658BW-1ekgPh6ybc_ftnWB0jK2Lc";
+String chat_id = "7057234968"; 
+String bot_token = "7559166548:AAHi19aDlfC2oOaQWQNgnMA4vR-tLBlG89g";
 
 bool threatDetected = false;
 
@@ -55,12 +55,12 @@ void checkButton(){
       wm.setConfigPortalTimeout(120);
       
       if (!wm.startConfigPortal("SmartSheepIoT","kambing")) {
-        Serial.println("failed to connect or hit timeout");
+        Serial.println("Gagal terhubung ke WiFi");
         delay(3000);
         // ESP.restart();
       } else {
         //if you get here you have connected to the WiFi
-        Serial.println("connected...yeey ");
+        Serial.println("Tersambung ke WiFi");
       }
     }
   }
@@ -140,12 +140,12 @@ void WifiManager() {
   res = wm.autoConnect("SmartSheepIoT","kambing123"); // password protected ap
 
   if(!res) {
-    Serial.println("Failed to connect or hit timeout");
+    Serial.println("Gagal terhubung atau waktu habis");
     // ESP.restart();
   } 
   else {
     //if you get here you have connected to the WiFi    
-    Serial.println("connected...yeey");
+    Serial.println("Terasmbung ke WiFi...");
   }
 }
 
@@ -201,6 +201,29 @@ void deteksiGerakan() {
   }
 }
 
+void cekGerakan() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  if (abs(a.acceleration.x) > 8 || abs(a.acceleration.y) > 8 || abs(a.acceleration.z) > 15) {
+    threatDetected = true;
+  } else {
+    threatDetected = false;
+  }
+
+  // Membuat pesan untuk Telegram
+  String pesan = "Accelerometer:\n";
+  pesan += "X: " + String(a.acceleration.x, 2) + " m/s^2\n";
+  pesan += "Y: " + String(a.acceleration.y, 2) + " m/s^2\n";
+  pesan += "Z: " + String(a.acceleration.z, 2) + " m/s^2\n";
+  pesan += "Gyroscope:\n";
+  pesan += "X: " + String(g.gyro.x, 2) + " rad/s\n";
+  pesan += "Y: " + String(g.gyro.y, 2) + " rad/s\n";
+  pesan += "Z: " + String(g.gyro.z, 2) + " rad/s";
+
+  sendMessage(pesan);
+}
+
 // Kirim lokasi ke user
 void kirimLokasi() {
   if (gps.location.isValid()) {
@@ -248,5 +271,5 @@ void loop() {
     kirimLokasi();
     threatDetected = false;
   }
-  delay(5000); // Monitoring setiap 5 detik
+  delay(15000); // Monitoring setiap 5 detik
 }
