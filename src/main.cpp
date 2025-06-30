@@ -293,6 +293,7 @@ const long interval = 15000; // 15 detik
 void loop() {
   if(wm_nonblocking) wm.process(); // avoid delays() in loop when non-blocking and other long running code  
   checkButton();
+  cekPermintaanUser();
 
   unsigned long currentMillis = millis();
   if (currentMillis - lastMillis >= interval) {
@@ -301,7 +302,6 @@ void loop() {
   bacaGPS();
   cekGerakan();
   deteksiGerakan();
-  cekPermintaanUser();
 
   if (threatDetected) {
     sendMessage("⚠️ Deteksi ancaman gerakan tidak biasa pada ternak!");
