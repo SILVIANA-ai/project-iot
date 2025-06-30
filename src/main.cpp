@@ -260,7 +260,11 @@ void cekPermintaanUser() {
 
           if (messageText == "/kirimlokasi") {
             kirimLokasi();
-          } else if (messageText == "/cekkondisi") {
+          }
+          else if (messageText == "/cekgerakan") {
+            cekGerakan();
+          } 
+          else if (messageText == "/cekkondisi") {
             deteksiGerakan();
             if (!threatDetected) {
               sendMessage("✅ Tidak Ada Bahaya.");
