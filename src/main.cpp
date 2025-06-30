@@ -146,7 +146,7 @@ void WifiManager() {
   } 
   else {
     //if you get here you have connected to the WiFi    
-    Serial.println("Terasmbung ke WiFi...");
+    Serial.println("Tersambung ke WiFi...");
   }
 }
 
@@ -245,7 +245,7 @@ void cekPermintaanUser() {
       Serial.println("Payload dari Telegram:");
       Serial.println(payload);
 
-      StaticJsonDocument<1024> doc;
+      JsonDocument doc;
       DeserializationError error = deserializeJson(doc, payload);
       if (!error && doc["result"].size() > 0) {
         int updateId = doc["result"][0]["update_id"];
@@ -283,12 +283,17 @@ void cekPermintaanUser() {
     Serial.println("WiFi tidak terhubung.");
   }
 }
-
+static long lastMillis = 0;
+const long interval = 15000; // 15 detik
 
 void loop() {
   if(wm_nonblocking) wm.process(); // avoid delays() in loop when non-blocking and other long running code  
   checkButton();
-  // put your main code here, to run repeatedly:
+
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastMillis >= interval) {
+      lastMillis = currentMillis;
+      // put your main code here, to run repeatedly:
   bacaGPS();
   cekGerakan();
   deteksiGerakan();
@@ -299,5 +304,7 @@ void loop() {
     kirimLokasi();
     threatDetected = false;
   }
-  delay(15000); // delay 
+    Serial.println("Melakukan tugas setiap 15 detik...");
+  }
+
 }
