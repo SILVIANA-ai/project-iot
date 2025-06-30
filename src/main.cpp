@@ -205,12 +205,6 @@ void cekGerakan() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
-  if (abs(a.acceleration.x) > 8 || abs(a.acceleration.y) > 8 || abs(a.acceleration.z) > 15) {
-    threatDetected = true;
-  } else {
-    threatDetected = false;
-  }
-
   // Membuat pesan untuk Telegram
   String pesan = "Accelerometer:\n";
   pesan += "X: " + String(a.acceleration.x, 2) + " m/s^2\n";
