@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <WiFiManager.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 // The TinyGPS++ object
 TinyGPSPlus gps;
@@ -42,7 +43,7 @@ void checkButton(){
     if( digitalRead(TRIGGER_PIN) == LOW ){
       Serial.println("Button Pressed");
       // still holding button for 3000 ms, reset settings, code not ideaa for production
-      delay(3000); // reset delay hold
+      delay(10000); // reset delay hold
       if( digitalRead(TRIGGER_PIN) == LOW ){
         Serial.println("Button Held");
         Serial.println("Erasing Config, restarting");
@@ -230,33 +231,66 @@ void kirimLokasi() {
   }
 }
 
+int lastUpdateId = 0;
+
 // Cek apakah user meminta lokasi ternak via Telegram
 void cekPermintaanUser() {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    String url = "https://api.telegram.org/bot" + bot_token + "/getUpdates?limit=1&offset=-1";
+    String url = "https://api.telegram.org/bot" + bot_token + "/getUpdates?offset=" + String(lastUpdateId + 1);
     http.begin(url);
     int httpCode = http.GET();
     if (httpCode > 0) {
       String payload = http.getString();
-      payload.toLowerCase();
-      if (payload.indexOf("lokasi") >= 0) {
-        kirimLokasi();
+      Serial.println("Payload dari Telegram:");
+      Serial.println(payload);
+
+      StaticJsonDocument<1024> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+      if (!error && doc["result"].size() > 0) {
+        int updateId = doc["result"][0]["update_id"];
+        if (updateId != lastUpdateId) {
+          lastUpdateId = updateId;
+
+          String messageText = doc["result"][0]["message"]["text"];
+          Serial.print("Perintah dari user: ");
+          Serial.println(messageText);
+
+          messageText.toLowerCase();
+
+          if (messageText == "/kirimlokasi") {
+            kirimLokasi();
+          } else if (messageText == "/cekkondisi") {
+            deteksiGerakan();
+            if (!threatDetected) {
+              sendMessage("✅ Tidak Ada Bahaya.");
+            } else {
+              sendMessage("⚠️ Ada potensi ancaman gerakan.");
+              kirimLokasi();
+            }
+          }
+        } else {
+          Serial.println("Perintah sama dengan sebelumnya, diabaikan.");
+        }
+      } else {
+        Serial.println("Gagal parsing JSON atau tidak ada perintah baru.");
       }
     } else {
       Serial.printf("Telegram getUpdates failed, error: %s\n", http.errorToString(httpCode).c_str());
     }
     http.end();
   } else {
-    Serial.println("WiFi not connected. Cannot check Telegram updates.");
+    Serial.println("WiFi tidak terhubung.");
   }
 }
+
 
 void loop() {
   if(wm_nonblocking) wm.process(); // avoid delays() in loop when non-blocking and other long running code  
   checkButton();
   // put your main code here, to run repeatedly:
   bacaGPS();
+  cekGerakan();
   deteksiGerakan();
   cekPermintaanUser();
 
@@ -265,5 +299,5 @@ void loop() {
     kirimLokasi();
     threatDetected = false;
   }
-  delay(15000); // Monitoring setiap 5 detik
+  delay(15000); // delay 
 }
