@@ -195,7 +195,7 @@ void deteksiGerakan() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
-  if (abs(a.acceleration.x) > 8 || abs(a.acceleration.y) > 8 || abs(a.acceleration.z) > 15) {
+  if (abs(a.acceleration.x) > 15 || abs(a.acceleration.y) > 15 || abs(a.acceleration.z) > 10) {
     threatDetected = true;
   } else {
     threatDetected = false;
@@ -288,7 +288,7 @@ void cekPermintaanUser() {
   }
 }
 static long lastMillis = 0;
-const long interval = 15000; // 15 detik
+const long interval = 15000; // interval loop
 
 void loop() {
   if(wm_nonblocking) wm.process(); // avoid delays() in loop when non-blocking and other long running code  
