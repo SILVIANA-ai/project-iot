@@ -195,7 +195,7 @@ void deteksiGerakan() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
-  if (abs(a.acceleration.x) > 15 || abs(a.acceleration.y) > 15 || abs(a.acceleration.z) > 10) {
+  if (abs(a.acceleration.x) > 150 || abs(a.acceleration.y) > 200 || abs(a.acceleration.z) > 150) {
     threatDetected = true;
   } else {
     threatDetected = false;
@@ -224,7 +224,7 @@ void kirimLokasi() {
   if (gps.location.isValid()) {
     String latitude = String(gps.location.lat(), 6);
     String longitude = String(gps.location.lng(), 6);
-    String message = "📍 Lokasi Ternak:\https://www.google.com/maps?q=" + latitude + "," + longitude;
+    String message = "📍 Lokasi Ternak:" "https://www.google.com/maps?q=" + latitude + "," + longitude;
     sendMessage(message);
   } else {
     sendMessage("⚠️ Gagal mendapatkan lokasi GPS.");
